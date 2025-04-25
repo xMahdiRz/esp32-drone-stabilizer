@@ -149,12 +149,36 @@ float computePID(float currentAngle) {
 
   // Calculate error terms
   float error = targetAngle - currentAngle;
-  errorSum += error * dt;            // Integral term
-  float dError = (error - lastError) / dt;  // Derivative term
+  errorSum += error * dt;                  // Integral term
+  float dError = (error - lastError) / dt; // Derivative term
   lastError = error;
 
+  // Compute PID components
+  float P = Kp * error;
+  float I = Ki * errorSum;
+  float D = Kd * dError;
+
   // Compute PID output
-  return (Kp * error) + (Ki * errorSum) + (Kd * dError);
+  float output = P + I + D;
+
+  // === Serial Plotter Output ===
+  // Format: label1:value1,label2:value2,...
+  Serial.print("Target:");
+  Serial.print(targetAngle);
+  Serial.print(",Current:");
+  Serial.print(currentAngle);
+  Serial.print(",Error:");
+  Serial.print(error);
+  Serial.print(",P:");
+  Serial.print(P);
+  Serial.print(",I:");
+  Serial.print(I);
+  Serial.print(",D:");
+  Serial.print(D);
+  Serial.print(",PID:");
+  Serial.println(output);
+
+  return output;
 }
 
 // === BLUETOOTH HANDLER ===
