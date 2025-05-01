@@ -7,12 +7,14 @@ This project implements a basic 1-axis drone stabilization system using an ESP32
 ## Table of Contents
 
 - [Features](#features)
+- [Code Structure](#code-structure)
 - [Hardware Used](#hardware-used)
 - [Wiring](#wiring)
 - [PID Control Parameters](#pid-control-parameters)
 - [Bluetooth Commands](#bluetooth-commands)
 - [Installation](#installation)
 - [Calibration](#calibration)
+- [Serial Plotting](#serial-plotting)
 - [Notes](#notes)
 - [Future Work](#future-work)
 - [License](#license)
@@ -31,6 +33,22 @@ This project implements a basic 1-axis drone stabilization system using an ESP32
 - Side-based motor control (independent left/right sides)
 - Zero-angle reference calibration for flexible mounting
 - Emergency shutdown safety system
+- Modular code structure for better organization and maintainability
+- Fixed Y-axis range (-360° to 360°) for Arduino Serial Plotter
+
+---
+
+## Code Structure
+
+The project is organized into modular components for better maintainability:
+
+- **esp32_drone_stabilizer.ino**: Main entry point with setup and loop functions
+- **motor_control.h/cpp**: Motor control functions and emergency shutdown
+- **pid_controller.h/cpp**: PID control algorithm implementation
+- **imu_sensor.h/cpp**: IMU sensor handling and calibration functions
+- **bluetooth_control.h/cpp**: Bluetooth communication and command processing
+
+This modular approach makes it easier to understand, maintain, and extend the codebase.
 
 ---
 
@@ -39,7 +57,8 @@ This project implements a basic 1-axis drone stabilization system using an ESP32
 - **ESP32** development board
 - **MPU6050** 6-axis IMU
 - **4 Brushless Motors** with ESCs (Electronic Speed Controllers)
-- **LEDs** for status indicators (Green and Red)
+- **LEDs** for status indicators (Green, Red, and Yellow)
+- **Buzzer** for audio feedback and alerts
 - **Bluetooth (Serial)** via built-in ESP32 module
 
 ---
@@ -56,6 +75,8 @@ This project implements a basic 1-axis drone stabilization system using an ESP32
 | Motor D (Left Rear)   | GPIO 19 |
 | Green LED     | GPIO 18 |
 | Red LED       | GPIO 5  |
+| Yellow LED    | GPIO 17 |
+| Buzzer        | GPIO 16 |
 
 ---
 
@@ -106,6 +127,8 @@ The system performs two types of calibration:
 - Automatically performed at first boot
 - Saved to ESP32 flash memory for future use
 - Can be manually triggered with the `CALIBRATE` command
+- During calibration, the yellow LED will turn on and the buzzer will beep once
+- When calibration completes, the yellow LED turns off and the buzzer beeps twice
 - During calibration, place the drone on a flat, level surface
 
 ### Zero-Angle Reference Calibration
@@ -113,7 +136,30 @@ The system performs two types of calibration:
 - Useful when the MPU6050 is not mounted perfectly level
 - Automatically performed at startup
 - Can be manually triggered with the `ZERO` command
+- During calibration, the yellow LED will turn on and the buzzer will beep once
+- When calibration completes, the yellow LED turns off and the buzzer beeps twice
 - During calibration, hold the drone in the desired "level" position
+
+---
+
+## Serial Plotting
+
+The system outputs data in a format optimized for the Arduino Serial Plotter:
+
+- **Fixed Y-axis Range**: The system outputs dummy min/max values (-360°/360°) to set a consistent Y-axis range in the Serial Plotter
+- **Plotted Values**:
+  - `Min`: -360° (dummy value for Y-axis scaling)
+  - `Max`: 360° (dummy value for Y-axis scaling)
+  - `Angle`: Current tilt angle in degrees
+  - `Target`: Target angle in degrees
+  - `RightMotors`: Right motors throttle (scaled to fit in plot range)
+  - `LeftMotors`: Left motors throttle (scaled to fit in plot range)
+  - `PID`: PID controller output
+  - `P`: Proportional component
+  - `I`: Integral component
+  - `D`: Derivative component
+
+This approach provides a consistent visualization even when values fluctuate widely, making it easier to tune the PID controller and monitor system performance.
 
 ---
 
@@ -121,8 +167,17 @@ The system performs two types of calibration:
 
 - Motors are grouped by left and right sides for differential control
 - Motor layout: Front motors: A (Right), C (Left) / Rear motors: B (Right), D (Left)
-- Emergency shutdown activates if tilt exceeds 75 degrees
-- System readiness is indicated by a green LED; failure to initialize the MPU6050 will show a red LED
+- Emergency shutdown activates if tilt exceeds 75 degrees with buzzer alarm
+- LED status indicators:
+  - Green LED: System ready and operational
+  - Red LED: Error state or emergency shutdown
+  - Yellow LED: Calibration in progress
+- Buzzer provides audio feedback for:
+  - System startup (single beep)
+  - System ready (three ascending beeps)
+  - Calibration start (single beep)
+  - Calibration complete (double beep)
+  - Emergency shutdown (three alarm beeps followed by continuous alarm)
 - Calibration data is persistent across power cycles
 
 ---
