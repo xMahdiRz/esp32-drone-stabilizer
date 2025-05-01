@@ -1,6 +1,6 @@
 # ESP32 Drone Stabilization System (1-Axis)
 
-This project implements a basic 1-axis drone stabilization system using an ESP32, MPU9250 IMU, and PID control. It supports wireless tuning and control via Bluetooth and is designed for testing fixed-axis balance.
+This project implements a basic 1-axis drone stabilization system using an ESP32, MPU6050 IMU, and PID control. It supports wireless tuning and control via Bluetooth and is designed for testing fixed-axis balance with individual motor control for left/right sides.
 
 ---
 
@@ -12,6 +12,7 @@ This project implements a basic 1-axis drone stabilization system using an ESP32
 - [PID Control Parameters](#pid-control-parameters)
 - [Bluetooth Commands](#bluetooth-commands)
 - [Installation](#installation)
+- [Calibration](#calibration)
 - [Notes](#notes)
 - [Future Work](#future-work)
 - [License](#license)
@@ -24,14 +25,19 @@ This project implements a basic 1-axis drone stabilization system using an ESP32
 - Bluetooth communication for real-time tuning and control
 - LED status indicators for system readiness
 - Compatible with ESCs via PWM control
-- MPU9250 sensor for orientation feedback
+- MPU6050 sensor for orientation feedback
+- Persistent calibration data storage in ESP32 flash memory
+- Sensor smoothing with adjustable alpha parameter
+- Side-based motor control (independent left/right sides)
+- Zero-angle reference calibration for flexible mounting
+- Emergency shutdown safety system
 
 ---
 
 ## Hardware Used
 
 - **ESP32** development board
-- **MPU9250** 9-axis IMU
+- **MPU6050** 6-axis IMU
 - **4 Brushless Motors** with ESCs (Electronic Speed Controllers)
 - **LEDs** for status indicators (Green and Red)
 - **Bluetooth (Serial)** via built-in ESP32 module
@@ -42,12 +48,12 @@ This project implements a basic 1-axis drone stabilization system using an ESP32
 
 | Component     | Pin    |
 |---------------|--------|
-| MPU9250 SDA   | GPIO 26 |
-| MPU9250 SCL   | GPIO 27 |
-| ESC Motor 1   | GPIO 23 |
-| ESC Motor 2   | GPIO 22 |
-| ESC Motor 3   | GPIO 21 |
-| ESC Motor 4   | GPIO 19 |
+| MPU6050 SDA   | GPIO 21 |
+| MPU6050 SCL   | GPIO 22 |
+| Motor A (Right Front) | GPIO 23 |
+| Motor B (Right Rear)  | GPIO 27 |
+| Motor C (Left Front)  | GPIO 26 |
+| Motor D (Left Rear)   | GPIO 19 |
 | Green LED     | GPIO 18 |
 | Red LED       | GPIO 5  |
 
@@ -55,53 +61,80 @@ This project implements a basic 1-axis drone stabilization system using an ESP32
 
 ## PID Control Parameters
 
-You can adjust the PID gains and target angle in real-time using Bluetooth commands:
+You can adjust the PID gains and other parameters in real-time using Bluetooth commands:
 
-| Command       | Description               |
-|---------------|---------------------------|
-| `SET:Kp=2.0`  | Set proportional gain     |
-| `SET:Ki=0.5`  | Set integral gain         |
-| `SET:Kd=1.0`  | Set derivative gain       |
-| `SET:TA=0.0`  | Set target angle (degrees)|
+| Parameter     | Description              | Default Value |
+|---------------|--------------------------|--------------|
+| `Kp`          | Proportional gain        | 1.0          |
+| `Ki`          | Integral gain            | 0.0          |
+| `Kd`          | Derivative gain          | 0.0          |
+| `TA`          | Target angle (degrees)   | 0.0          |
+| `BT`          | Base throttle value      | 1100         |
+| `ALPHA`       | Smoothing factor (0-1)   | 0.9          |
 
 ---
 
 ## Bluetooth Commands
 
-- `START` – Starts the stabilization system.
-- `STOP` – Stops all motors.
-- `SET:<param>=<value>` – Sets PID parameters or target angle.
+- `START` – Starts the stabilization system
+- `STOP` – Stops all motors
+- `CALIBRATE` – Initiates MPU6050 calibration (place drone on flat surface)
+- `ZERO` – Sets current orientation as zero reference angle
+- `SET:<param>=<value>` – Sets parameters (e.g., `SET:Kp=2.0`)
 
 ---
 
 ## Installation
 
 1. Install the following libraries in the Arduino IDE:
-   - `MPU9250`
+   - `MPU6050` (not MPU9250)
    - `BluetoothSerial`
-2. Connect the components as per the wiring table.
-3. Upload the sketch to your ESP32 board.
-4. Pair your computer or phone with the ESP32 over Bluetooth (`ESP32_DRONE`).
-5. Use a Bluetooth terminal app (e.g., Serial Bluetooth Terminal for Android) to send commands.
+   - `Wire` (built-in)
+   - `Preferences` (built-in)
+2. Connect the components as per the wiring table
+3. Upload the sketch to your ESP32 board
+4. Pair your computer or phone with the ESP32 over Bluetooth (`ESP32_DRONE`)
+5. Use a Bluetooth terminal app (e.g., Serial Bluetooth Terminal for Android) to send commands
+
+---
+
+## Calibration
+
+The system performs two types of calibration:
+
+### MPU6050 Sensor Calibration
+- Automatically performed at first boot
+- Saved to ESP32 flash memory for future use
+- Can be manually triggered with the `CALIBRATE` command
+- During calibration, place the drone on a flat, level surface
+
+### Zero-Angle Reference Calibration
+- Sets the current orientation as the "zero" reference
+- Useful when the MPU6050 is not mounted perfectly level
+- Automatically performed at startup
+- Can be manually triggered with the `ZERO` command
+- During calibration, hold the drone in the desired "level" position
 
 ---
 
 ## Notes
 
-- All motors are controlled identically in this demo version for 1-axis stabilization testing.
-- Make sure your ESCs are properly calibrated before use.
-- Use a stable power supply to avoid brownouts or resets during motor spin-up.
-- System readiness is indicated by a green LED; failure to initialize the MPU9250 will show a red LED.
+- Motors are grouped by left and right sides for differential control
+- Motor layout: Front motors: A (Right), C (Left) / Rear motors: B (Right), D (Left)
+- Emergency shutdown activates if tilt exceeds 75 degrees
+- System readiness is indicated by a green LED; failure to initialize the MPU6050 will show a red LED
+- Calibration data is persistent across power cycles
 
 ---
 
 ## Future Work
 
 - Add support for full 2-axis or 3-axis stabilization
-- Integrate Kalman filter for improved sensor fusion
+- Implement complementary or Kalman filter for sensor fusion
 - Log flight data to SD card or over Wi-Fi
 - Build a mobile app for PID tuning and live monitoring
-- Implement separate motor control for roll/pitch correction
+- Add altitude hold capabilities
+- Implement low battery detection and warning
 
 ---
 
